@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/images">
+        <file>images/back.png</file>
+        <file>images/back-menu.jpg</file>
+        <file>images/mush1.png</file>
+        <file>images/mush2.png</file>
+        <file>images/mush3.png</file>
+        <file>images/mush4.png</file>
+        <file>images/mush5.png</file>
+        <file>images/mush6.png</file>
+        <file>images/mush7.png</file>
+    </qresource>
+    <qresource prefix="/sound">
+        <file>sounds/sandbox-serenade-sky-toes-main-version-28029-02-39.mp3</file>
+    </qresource>
+</RCC>
