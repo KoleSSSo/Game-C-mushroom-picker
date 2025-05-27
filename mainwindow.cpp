@@ -52,6 +52,11 @@ MainWindow::~MainWindow()               //деструктор
     delete ui;
 }
 
+QString MainWindow::getPlayerName() const
+{
+    return ui->playerNameEdit->text().trimmed();
+}
+
 void MainWindow::onStartClicked()
 {
     QString playerName = ui->playerNameEdit->text().trimmed();
@@ -62,17 +67,18 @@ void MainWindow::onStartClicked()
         return;
     }
 
-    // Скрываем главное меню
     this->hide();
 
-    // Создаём игровой экран
     GameScreen* gameScreen = new GameScreen(m_soundEffect);
+    gameScreen->setPlayerName(playerName); // Передаем имя игрока
+    gameScreen->setWindowTitle("Грибник - " + playerName);
+
     connect(gameScreen, &GameScreen::returnToMenuRequested, this, [this, gameScreen]() {
         gameScreen->deleteLater();
         this->show();
     });
 
-    gameScreen->showFullScreen();
+    gameScreen->show();
 }
 
 void MainWindow::onSettingsClicked() {

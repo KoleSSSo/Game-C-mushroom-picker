@@ -12,39 +12,38 @@
 GameScreen::GameScreen(QSoundEffect* backgroundMusic, QWidget *parent)
     : QWidget(parent), m_backgroundMusic(backgroundMusic)
 {
+    setFixedSize(1080, 720); // Фиксируем размер окна
+    setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
     setAttribute(Qt::WA_DeleteOnClose);
     setFocusPolicy(Qt::StrongFocus);
 
     loadTextures();
     setupUI();
 
-    m_gameTimer = new QTimer(this);
-    m_gameTimer->start(m_timeLeft * 1000);
+    // Главный игровой цикл (60 FPS)
+    m_gameLoopTimer = new QTimer(this);
+    connect(m_gameLoopTimer, &QTimer::timeout, this, &GameScreen::updateGame);
+    m_gameLoopTimer->start(16);
 
+    // Таймер игрового времени
     m_clockTimer = new QTimer(this);
     connect(m_clockTimer, &QTimer::timeout, this, &GameScreen::updateTimer);
     m_clockTimer->start(1000);
 
-    QTimer* movementTimer = new QTimer(this);
-    connect(movementTimer, &QTimer::timeout, this, [this]() {
-        int dx = 0, dy = 0;
-        if (m_moveUp) dy -= m_playerSpeed;
-        if (m_moveDown) dy += m_playerSpeed;
-        if (m_moveLeft) dx -= m_playerSpeed;
-        if (m_moveRight) dx += m_playerSpeed;
+    // Таймер спавна грибов
+    m_spawnTimer = new QTimer(this);
+    connect(m_spawnTimer, &QTimer::timeout, this, &GameScreen::spawnMushroom);
+    m_spawnTimer->start(1500);
 
-        // Нормализация диагонального движения
-        if (dx != 0 && dy != 0) {
-            dx *= 0.7071; // 1/sqrt(2)
-            dy *= 0.7071;
-        }
-
-        if (dx != 0 || dy != 0) {
-            movePlayer(dx, dy);
-        }
+    // Таймер общего времени игры
+    m_gameTimer = new QTimer(this);
+    m_gameTimer->setSingleShot(true);
+    connect(m_gameTimer, &QTimer::timeout, this, [this]() {
+        m_gameActive = false;
     });
-    movementTimer->start(33); // ~30 FPS
+    m_gameTimer->start(90000); // 90 секунд
 }
+
 
 GameScreen::~GameScreen()
 {
@@ -52,18 +51,60 @@ GameScreen::~GameScreen()
     m_clockTimer->stop();
 }
 
+void GameScreen::updateGame()
+{
+    if (!m_gameActive) return;
+
+    // Обработка движения
+    int dx = 0, dy = 0;
+    if (m_moveUp) dy -= m_playerSpeed;
+    if (m_moveDown) dy += m_playerSpeed;
+    if (m_moveLeft) dx -= m_playerSpeed;
+    if (m_moveRight) dx += m_playerSpeed;
+
+    // Нормализация диагонального движения
+    if (dx != 0 && dy != 0) {
+        dx *= 0.7071f; // 1/sqrt(2)
+        dy *= 0.7071f;
+    }
+
+    if (dx != 0 || dy != 0) {
+        movePlayer(dx, dy);
+    }
+}
+
+void GameScreen::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    // Обновляем позиции UI элементов при изменении размера окна
+    m_timeLabel->move(20, 20);
+    m_scoreLabel->move(width() - 220, 20);
+    m_badMushroomsLabel->move(width() / 2 - 100, 20);
+
+    // Масштабируем фон
+    if (!m_background.isNull()) {
+        m_background = m_background.scaled(size(), Qt::KeepAspectRatioByExpanding);
+    }
+}
+
+void GameScreen::clearMushrooms()
+{
+    qDeleteAll(m_mushrooms);
+    m_mushrooms.clear();
+}
+
 void GameScreen::loadTextures()
 {
-    // Загрузка фона
+    // Фон
     QPixmap bg("C:/programming/Mushroomer/Game/images/back.png");
     if (!bg.isNull()) {
-        m_background = bg.scaled(size(), Qt::KeepAspectRatioByExpanding);
+        m_background = bg.scaled(this->size(), Qt::IgnoreAspectRatio);
     } else {
-        m_background = QPixmap(size());
+        m_background = QPixmap(this->size());
         m_background.fill(QColor("#5a8f5a"));
     }
 
-    // Загрузка текстуры игрока
+    // Игрок (оставляем размер 128x128)
     QPixmap player("C:/programming/Mushroomer/Game/images/hat.png");
     if (!player.isNull()) {
         m_playerTexture = player.scaled(128, 128, Qt::KeepAspectRatio);
@@ -71,15 +112,41 @@ void GameScreen::loadTextures()
         m_playerTexture = QPixmap(128, 128);
         m_playerTexture.fill(Qt::blue);
     }
+
+    // Начальная позиция игрока по центру
+    m_playerX = (width() - m_playerTexture.width()) / 2;
+    m_playerY = (height() - m_playerTexture.height()) / 2;
 }
 
 void GameScreen::setupUI()
 {
+    // Устанавливаем размеры элементов в соответствии с новым разрешением
     m_timeLabel = new QLabel(this);
-    m_timeLabel->setAlignment(Qt::AlignCenter);
     m_timeLabel->setGeometry(20, 20, 200, 40);
-    m_timeLabel->setStyleSheet("font-family: 'Saturn'; font-size: 24px; color: white;");
+
+    m_scoreLabel = new QLabel(this);
+    m_scoreLabel->setGeometry(860, 20, 200, 40); // 1080 - 220 = 860
+
+    m_badMushroomsLabel = new QLabel(this);
+    m_badMushroomsLabel->setGeometry(440, 20, 200, 40); // (1080/2) - 100 = 440
+
+    // Обновляем стили
+    QString labelStyle = "font-family: 'Saturn'; font-size: 24px; color: white;";
+    m_timeLabel->setStyleSheet(labelStyle);
+    m_scoreLabel->setStyleSheet(labelStyle);
+    m_badMushroomsLabel->setStyleSheet(labelStyle);
+
     updateTimer();
+    updateScoreDisplay();
+}
+
+void GameScreen::updateScoreDisplay()
+{
+    m_scoreLabel->setText(QString("Очки: %1").arg(m_score));
+    m_badMushroomsLabel->setText(QString("Жизни: %1/3").arg(3 - m_badMushroomsCollected));
+    m_badMushroomsLabel->setStyleSheet(
+        QString("font-family: 'Saturn'; font-size: 24px; color: %1;")
+            .arg((3 - m_badMushroomsCollected) == 1 ? "red" : "white"));
 }
 
 void GameScreen::paintEvent(QPaintEvent *event)
@@ -96,22 +163,24 @@ void GameScreen::paintEvent(QPaintEvent *event)
 
     // Рисуем игрока
     painter.drawPixmap(m_playerX, m_playerY, m_playerTexture);
+
+    // УБИРАЕМ дублированный HUD из paintEvent, так как у нас уже есть QLabel'ы
 }
 
 void GameScreen::updateTimer()
 {
+    if (!m_gameActive) return;
+
     m_timeLeft--;
     m_timeLabel->setText(QString("Время: %1:%2")
                              .arg(m_timeLeft / 60, 2, 10, QLatin1Char('0'))
                              .arg(m_timeLeft % 60, 2, 10, QLatin1Char('0')));
-    m_timeLabel->setStyleSheet("font-family: 'Saturn'; font-size: 24px; color: white;");
 
     if (m_timeLeft <= 0) {
-        m_gameTimer->stop();
-        m_clockTimer->stop();
-
+        saveRecord(); // Сохраняем рекорд при окончании времени
+        m_timeLeft = 0;
+        m_gameActive = false;
         StyleDialog endDialog("Игра окончена", "Время закончилось!", this);
-        QVBoxLayout* layout = qobject_cast<QVBoxLayout*>(endDialog.layout());
 
         QPushButton* menuButton = new QPushButton("Выйти в главное меню", &endDialog);
         menuButton->setStyleSheet(
@@ -128,10 +197,12 @@ void GameScreen::updateTimer()
             "   background-color: rgba(167, 204, 170, 200);"
             "}");
 
-        layout->insertWidget(2, menuButton, 0, Qt::AlignCenter);
+        connect(menuButton, &QPushButton::clicked, [this]() {
+            this->close();
+        });
 
-        connect(menuButton, &QPushButton::clicked, this, &GameScreen::returnToMenuRequested);
         endDialog.exec();
+        emit returnToMenuRequested();
     }
 }
 
@@ -140,11 +211,20 @@ void GameScreen::spawnMushroom()
     Mushroom::Type type = static_cast<Mushroom::Type>(QRandomGenerator::global()->bounded(7));
     Mushroom* mushroom = new Mushroom(type, this);
 
+    // Учитываем новые границы экрана
     int x = QRandomGenerator::global()->bounded(width() - mushroom->rect().width());
     int y = QRandomGenerator::global()->bounded(height() - mushroom->rect().height());
     mushroom->setPosition(x, y);
 
     m_mushrooms.append(mushroom);
+
+    QTimer::singleShot(5000, [this, mushroom]() {
+        if (m_mushrooms.removeOne(mushroom)) {
+            mushroom->deleteLater();
+            update();
+        }
+    });
+
     update();
 }
 
@@ -154,10 +234,24 @@ void GameScreen::checkCollisions()
 
     for (int i = 0; i < m_mushrooms.size(); ++i) {
         if (playerRect.intersects(m_mushrooms[i]->rect())) {
-            // Обработка сбора гриба
-            m_mushrooms.takeAt(i)->deleteLater();
+            Mushroom* collected = m_mushrooms.takeAt(i);
+
+            // Обновляем счет
+            m_score += collected->value();
+
+            // Проверяем на несъедобные грибы
+            if (collected->value() < 0) {
+                m_badMushroomsCollected++;
+                if (m_badMushroomsCollected >= 3) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            collected->deleteLater();
             i--;
-            // Здесь нужно добавить логику подсчета очков
+            updateScoreDisplay();
+            update();
         }
     }
 }
@@ -197,7 +291,8 @@ void GameScreen::movePlayer(int dx, int dy)
 {
     m_playerX = qBound(0, m_playerX + dx, width() - m_playerTexture.width());
     m_playerY = qBound(0, m_playerY + dy, height() - m_playerTexture.height());
-    update(); // Перерисовываем экран
+    checkCollisions();
+    update();
 }
 
 void GameScreen::showEvent(QShowEvent *event)
@@ -205,6 +300,21 @@ void GameScreen::showEvent(QShowEvent *event)
     QWidget::showEvent(event);
     setFocus();
 }
+
+void GameScreen::saveRecord()
+{
+    if (m_playerName.isEmpty()) {
+        m_playerName = "Игрок";
+    }
+
+    QFile recordsFile("records.txt");
+    if (recordsFile.open(QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&recordsFile);
+        out << m_playerName << ":" << m_score << "\n";
+        recordsFile.close();
+    }
+}
+
 
 void GameScreen::showPauseMenu()
 {
@@ -256,15 +366,47 @@ void GameScreen::showPauseMenu()
 
     connect(settingsButton, &QPushButton::clicked, [&]() {
         SettingsDialog settings(m_backgroundMusic, &pauseMenu);
-        if (settings.exec() == QDialog::Accepted) {
-            // Настройки сохранены
-        }
+        settings.exec();
     });
 
-    connect(exitButton, &QPushButton::clicked, [&]() {
-        pauseMenu.close();
+    connect(exitButton, &QPushButton::clicked, [this]() {
+        this->close();
         emit returnToMenuRequested();
     });
 
     pauseMenu.exec();
+}
+
+void GameScreen::gameOver()
+{
+    m_gameActive = false;
+    m_gameTimer->stop();
+    m_clockTimer->stop();
+    m_spawnTimer->stop();
+    saveRecord(); // Сохраняем рекорд
+
+    StyleDialog endDialog("Игра окончена",
+                          QString("Вы потеряли все жизни!\nВаш счет: %1").arg(m_score), this);
+
+    QPushButton* menuButton = new QPushButton("Выйти в главное меню", &endDialog);
+    menuButton->setStyleSheet(
+        "QPushButton {"
+        "   font-family: 'Saturn';"
+        "   font-size: 18px;"
+        "   color: black;"
+        "   background-color: rgba(187, 224, 190, 150);"
+        "   border: 2px solid #2d5a3f;"
+        "   padding: 5px 20px;"
+        "   min-width: 100px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(167, 204, 170, 200);"
+        "}");
+
+    connect(menuButton, &QPushButton::clicked, [this]() {
+        this->close();
+    });
+
+    endDialog.exec();
+    emit returnToMenuRequested();
 }

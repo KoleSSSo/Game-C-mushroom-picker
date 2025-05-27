@@ -7,6 +7,7 @@
 #include <QDialog>
 #include <QSoundEffect>
 #include <QAudioOutput>
+#include <QString>
 #include "records.h"
 #include "styledialog.h"
 #include "settingsdialog.h"
@@ -24,6 +25,7 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+    QString getPlayerName() const;
     QSoundEffect* getSoundEffect() const { return m_soundEffect; }  // Новый метод
 
 private slots:
