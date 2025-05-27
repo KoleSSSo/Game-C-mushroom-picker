@@ -8,17 +8,12 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Явно указываем необходимые компоненты
 find_package(Qt6 REQUIRED COMPONENTS
     Core
     Gui
     Widgets
     Multimedia
 )
-
-message(STATUS "Qt Multimedia status:")
-message(STATUS "  Includes: ${Qt6Multimedia_INCLUDE_DIRS}")
-message(STATUS "  Libraries: ${Qt6Multimedia_LIBRARIES}")
 
 set(PROJECT_SOURCES
     main.cpp
@@ -31,11 +26,13 @@ set(PROJECT_SOURCES
     records.h
     settingsdialog.cpp
     settingsdialog.h
+    gamescreen.cpp  # Убедитесь, что файл существует
+    gamescreen.h
 )
 
-add_executable(Game ${PROJECT_SOURCES})
+add_executable(Game ${PROJECT_SOURCES}
+    mushroom.h mushroom.cpp)
 
-# Подключение ресурсов
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/resources.qrc)
     set_source_files_properties(resources.qrc PROPERTIES QT_RESOURCE_ALIAS "/")
     qt_add_resources(Game "app_resources"
@@ -45,7 +42,6 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/resources.qrc)
     )
 endif()
 
-# Ключевое изменение - добавляем Multimedia к линковке
 target_link_libraries(Game PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -54,11 +50,11 @@ target_link_libraries(Game PRIVATE
 )
 
 set_target_properties(Game PROPERTIES
-    MACOSX_BUNDLE TRUE
-    WIN32_EXECUTABLE TRUE
+    AUTOMOC ON  # Важно для обработки Q_OBJECT
+    AUTOUIC ON
+    AUTORCC ON
 )
 
-# Для Qt 6.3 и новее
 if(QT_VERSION_MAJOR EQUAL 6 AND QT_VERSION_MINOR GREATER 2)
     qt_finalize_executable(Game)
 endif()

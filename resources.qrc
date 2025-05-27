@@ -2,6 +2,8 @@
     <qresource prefix="/images">
         <file>images/back.png</file>
         <file>images/back-menu.jpg</file>
+        <file>images/Default_cute_hat_with_a_bow_top_view_only_a_hat_0_cbb37df2-f255-46f5-827b-f391a51d25bf_0 (1).png</file>
+        <file>images/hat.png</file>
         <file>images/mush1.png</file>
         <file>images/mush2.png</file>
         <file>images/mush3.png</file>
@@ -11,8 +13,8 @@
         <file>images/mush7.png</file>
     </qresource>
     <qresource prefix="/sound">
-        <file>sounds/sandbox-serenade-sky-toes-main-version-28029-02-39.mp3</file>
-        <file>sounds/IC3PEAK-Froinlove.mp3</file>
         <file>sounds/3.wav</file>
+        <file>sounds/IC3PEAK-Froinlove.mp3</file>
+        <file>sounds/sandbox-serenade-sky-toes-main-version-28029-02-39.wav</file>
     </qresource>
 </RCC>

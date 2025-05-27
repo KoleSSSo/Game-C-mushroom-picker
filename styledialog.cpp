@@ -1,7 +1,9 @@
 #include "styledialog.h"
-#include <QApplication>
+#include <QLabel>
+#include <QPushButton>
+#include <QVBoxLayout>
 
-StyleDialog::StyleDialog(const QString& title, const QString& message, QWidget* parent)
+StyleDialog::StyleDialog(const QString& title, const QString& message, QWidget *parent)
     : QDialog(parent)
 {
     setupUI(title, message);
@@ -14,17 +16,14 @@ void StyleDialog::setupUI(const QString& title, const QString& message)
 
     QVBoxLayout* layout = new QVBoxLayout(this);
 
-    // Стилизованный заголовок
     QLabel* titleLabel = new QLabel(title, this);
     titleLabel->setStyleSheet("font-family: 'Saturn'; font-size: 24px; color: #2d5a3f;");
     titleLabel->setAlignment(Qt::AlignCenter);
 
-    // Стилизованное сообщение
     QLabel* msgLabel = new QLabel(message, this);
     msgLabel->setStyleSheet("font-family: 'Saturn'; font-size: 18px; color: black;");
     msgLabel->setAlignment(Qt::AlignCenter);
 
-    // Стилизованная кнопка
     QPushButton* okButton = new QPushButton("OK", this);
     okButton->setStyleSheet(
         "QPushButton {"
@@ -34,11 +33,11 @@ void StyleDialog::setupUI(const QString& title, const QString& message)
         "   background-color: rgba(187, 224, 190, 150);"
         "   border: 2px solid #2d5a3f;"
         "   padding: 5px 20px;"
+        "   min-width: 100px;"
         "}"
         "QPushButton:hover {"
         "   background-color: rgba(167, 204, 170, 200);"
-        "}"
-        );
+        "}");
 
     connect(okButton, &QPushButton::clicked, this, &QDialog::accept);
 
@@ -46,11 +45,9 @@ void StyleDialog::setupUI(const QString& title, const QString& message)
     layout->addWidget(msgLabel);
     layout->addWidget(okButton, 0, Qt::AlignCenter);
 
-    // Фон диалога
     setStyleSheet(
         "StyleDialog {"
         "   background-color: rgba(255, 255, 255, 220);"
         "   border: 3px solid #2d5a3f;"
-        "}"
-        );
+        "}");
 }

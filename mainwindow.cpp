@@ -15,6 +15,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);                  //загружает интерфейс из .ui-файла и размещает его в окне.
 
+
     // Принудительная установка фона
     QPixmap bg("C:/programming/Mushroomer/textures/back-menu.jpg");
     bg = bg.scaled(this->size(), Qt::IgnoreAspectRatio);
@@ -51,16 +52,28 @@ MainWindow::~MainWindow()               //деструктор
     delete ui;
 }
 
-void MainWindow::onStartClicked() {
+void MainWindow::onStartClicked()
+{
     QString playerName = ui->playerNameEdit->text().trimmed();
     if (playerName.isEmpty()) {
-        playerName = "Игрок";           // Значение по умолчанию
+        playerName = "Игрок";
+        StyleDialog warning("Ошибка", "Введите имя игрока!", this);
+        warning.exec();
         return;
     }
-    StyleDialog info("Старт", QString("Добро пожаловать, %1!").arg(playerName), this);
-    info.exec();
-}
 
+    // Скрываем главное меню
+    this->hide();
+
+    // Создаём игровой экран
+    GameScreen* gameScreen = new GameScreen(m_soundEffect);
+    connect(gameScreen, &GameScreen::returnToMenuRequested, this, [this, gameScreen]() {
+        gameScreen->deleteLater();
+        this->show();
+    });
+
+    gameScreen->showFullScreen();
+}
 
 void MainWindow::onSettingsClicked() {
     SettingsDialog settings(m_soundEffect, this);
@@ -72,11 +85,56 @@ void MainWindow::onSettingsClicked() {
         qDebug() << "Изменения отменены";
     }
 }
+
 void MainWindow::onExitClicked() {
-    StyleDialog confirm("Выход", "Вы действительно хотите выйти?", this);
-    if (confirm.exec() == QDialog::Accepted) {
-        QApplication::quit();
-    }
+    QDialog exitDialog(this);
+    exitDialog.setWindowTitle("Подтверждение");
+    exitDialog.setFixedSize(400, 200);
+
+    QVBoxLayout* layout = new QVBoxLayout(&exitDialog);
+
+    QLabel* message = new QLabel("Действительно хотите выйти?", &exitDialog);
+    message->setStyleSheet("font-family: 'Saturn'; font-size: 18px; color: black;");
+    message->setAlignment(Qt::AlignCenter);
+
+    QPushButton* yesButton = new QPushButton("Да", &exitDialog);
+    QPushButton* noButton = new QPushButton("Нет", &exitDialog);
+
+    QString buttonStyle =
+        "QPushButton {"
+        "   font-family: 'Saturn';"
+        "   font-size: 18px;"
+        "   color: black;"
+        "   background-color: rgba(187, 224, 190, 150);"
+        "   border: 2px solid #2d5a3f;"
+        "   padding: 5px 20px;"
+        "   min-width: 80px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(167, 204, 170, 200);"
+        "}";
+
+    yesButton->setStyleSheet(buttonStyle);
+    noButton->setStyleSheet(buttonStyle);
+
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    buttonLayout->addWidget(yesButton);
+    buttonLayout->addWidget(noButton);
+    buttonLayout->setAlignment(Qt::AlignCenter);
+
+    layout->addWidget(message);
+    layout->addLayout(buttonLayout);
+
+    exitDialog.setStyleSheet(
+        "QDialog {"
+        "   background-color: rgba(255, 255, 255, 220);"
+        "   border: 3px solid #2d5a3f;"
+        "}");
+
+    connect(yesButton, &QPushButton::clicked, qApp, &QApplication::quit);
+    connect(noButton, &QPushButton::clicked, &exitDialog, &QDialog::reject);
+
+    exitDialog.exec();
 }
 
 void MainWindow::onRecordClicked() {

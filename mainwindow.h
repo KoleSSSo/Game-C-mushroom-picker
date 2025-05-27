@@ -10,6 +10,7 @@
 #include "records.h"
 #include "styledialog.h"
 #include "settingsdialog.h"
+#include "gamescreen.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
