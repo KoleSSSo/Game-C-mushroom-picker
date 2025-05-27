@@ -5,35 +5,34 @@
 #include <QSettings>  // Добавляем для работы с настройками
 #include <QPixmap>
 #include <QPalette>
+#include <QSoundEffect>
 
 
-MainWindow::MainWindow(QWidget *parent) //конструктор
+MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow)            //создаёт объект интерфейса
-
+    , ui(new Ui::MainWindow)
+    , m_soundEffect(new QSoundEffect(this))  // Инициализация эффекта
 {
     ui->setupUi(this);                  //загружает интерфейс из .ui-файла и размещает его в окне.
 
     // Принудительная установка фона
-    QPixmap bg(":/images/images/back-menu.jpg");
+    QPixmap bg("C:/programming/Mushroomer/textures/back-menu.jpg");
     bg = bg.scaled(this->size(), Qt::IgnoreAspectRatio);
     QPalette palette;
     palette.setBrush(QPalette::Window, bg);
     this->setPalette(palette);
 
-    // Инициализация музыки
-    QMediaPlayer* m_musicPlayer = new QMediaPlayer(this);
-    QAudioOutput* m_audioOutput = new QAudioOutput(this);  // Делаем членом класса
 
-    m_musicPlayer->setAudioOutput(m_audioOutput);
-    m_musicPlayer->setSource(QUrl("qrc:/sound/sounds/sandbox-serenade-sky-toes-main-version-28029-02-39.mp3"));
-    m_musicPlayer->setLoops(QMediaPlayer::Infinite);
+    // Настройка музыки
+    QString audioPath = "C:/programming/Mushroomer/Game/sounds/sandbox-serenade-sky-toes-main-version-28029-02-39.wav";
+    m_soundEffect->setSource(QUrl::fromLocalFile(audioPath));
+    m_soundEffect->setLoopCount(QSoundEffect::Infinite);
 
-    // Загрузка сохранённой громкости
+    // Установка громкости 100% по умолчанию
     QSettings settings;
-    float savedVolume = settings.value("audio/volume", 0.5).toFloat();
-    m_audioOutput->setVolume(savedVolume);
-    m_musicPlayer->play();
+    float volume = settings.value("audio/volume", 1.0f).toFloat();  // 1.0 = 100%
+    m_soundEffect->setVolume(volume);
+    m_soundEffect->play();
 
     // Фиксированный размер (должен соответствовать размеру в Designer)
     this->setFixedSize(1080, 720);
@@ -64,16 +63,15 @@ void MainWindow::onStartClicked() {
 
 
 void MainWindow::onSettingsClicked() {
-    // Создаём новый QAudioOutput для настроек
-    QAudioOutput* audioOutput = findChild<QAudioOutput*>(); // Или сохраните как член класса
-    if (!audioOutput) {
-        qWarning() << "Audio output not found!";
-        return;
+    SettingsDialog settings(m_soundEffect, this);
+    if (settings.exec() == QDialog::Accepted) {
+        // Настройки были сохранены
+        qDebug() << "Настройки сохранены, текущая громкость:" << m_soundEffect->volume();
+    } else {
+        // Настройки не сохранялись
+        qDebug() << "Изменения отменены";
     }
-    SettingsDialog settings(audioOutput, this);
-    settings.exec();
 }
-
 void MainWindow::onExitClicked() {
     StyleDialog confirm("Выход", "Вы действительно хотите выйти?", this);
     if (confirm.exec() == QDialog::Accepted) {

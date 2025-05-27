@@ -2,19 +2,23 @@
 #define SETTINGSDIALOG_H
 
 #include <QDialog>
-#include <QMediaPlayer>
-#include <QAudioOutput>
+#include <QSoundEffect>
 
 class SettingsDialog : public QDialog {
     Q_OBJECT
 public:
-    explicit SettingsDialog(QAudioOutput* audioOutput, QWidget *parent = nullptr);
+    explicit SettingsDialog(QSoundEffect* soundEffect, QWidget *parent = nullptr);
+    float getCurrentVolume() const { return currentVolume; }
 
 private slots:
     void updateVolume(int volume);
+    void saveSettings();
+    void discardChanges();
 
 private:
-    QAudioOutput* m_audioOutput;  // Изменили на QAudioOutput
+    QSoundEffect* m_soundEffect;
+    float initialVolume;
+    float currentVolume;
 };
 
 #endif // SETTINGSDIALOG_H

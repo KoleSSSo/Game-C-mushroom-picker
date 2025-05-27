@@ -1,16 +1,20 @@
 #include "settingsdialog.h"
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QSlider>
 #include <QPushButton>
 #include <QLabel>
+#include <QSettings>  // Добавляем для работы с настройками
 
-SettingsDialog::SettingsDialog(QAudioOutput* audioOutput, QWidget *parent)
-    : QDialog(parent), m_audioOutput(audioOutput)
+SettingsDialog::SettingsDialog(QSoundEffect* soundEffect, QWidget *parent)
+    : QDialog(parent), m_soundEffect(soundEffect),
+    initialVolume(soundEffect->volume()),
+    currentVolume(soundEffect->volume())
 {
     setWindowTitle("Настройки");
-    setFixedSize(300, 200);
+    setFixedSize(350, 200);
 
-    QVBoxLayout* layout = new QVBoxLayout(this);
+    QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
     // Заголовок
     QLabel* titleLabel = new QLabel("Громкость музыки", this);
@@ -20,12 +24,15 @@ SettingsDialog::SettingsDialog(QAudioOutput* audioOutput, QWidget *parent)
     // Слайдер громкости
     QSlider* volumeSlider = new QSlider(Qt::Horizontal, this);
     volumeSlider->setRange(0, 100);
-    volumeSlider->setValue(m_audioOutput->volume() * 100);  // Конвертируем в проценты
+    volumeSlider->setValue(currentVolume * 100);
     connect(volumeSlider, &QSlider::valueChanged, this, &SettingsDialog::updateVolume);
 
-    // Кнопка закрытия
-    QPushButton* closeButton = new QPushButton("Закрыть", this);
-    closeButton->setStyleSheet(
+    // Горизонтальный лейаут для кнопок
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+
+    // Кнопка "Сохранить"
+    QPushButton* saveButton = new QPushButton("Сохранить", this);
+    saveButton->setStyleSheet(
         "QPushButton {"
         "   font-family: 'Saturn';"
         "   font-size: 18px;"
@@ -35,11 +42,28 @@ SettingsDialog::SettingsDialog(QAudioOutput* audioOutput, QWidget *parent)
         "   padding: 5px 20px;"
         "}"
         );
-    connect(closeButton, &QPushButton::clicked, this, &QDialog::accept);
+    connect(saveButton, &QPushButton::clicked, this, &SettingsDialog::saveSettings);
 
-    layout->addWidget(titleLabel);
-    layout->addWidget(volumeSlider);
-    layout->addWidget(closeButton, 0, Qt::AlignCenter);
+    // Кнопка "Закрыть"
+    QPushButton* closeButton = new QPushButton("Закрыть", this);
+    closeButton->setStyleSheet(
+        "QPushButton {"
+        "   font-family: 'Saturn';"
+        "   font-size: 18px;"
+        "   color: black;"
+        "   background-color: rgba(224, 187, 187, 150);"
+        "   border: 2px solid #5a2d2d;"
+        "   padding: 5px 20px;"
+        "}"
+        );
+    connect(closeButton, &QPushButton::clicked, this, &SettingsDialog::discardChanges);
+
+    buttonLayout->addWidget(saveButton);
+    buttonLayout->addWidget(closeButton);
+
+    mainLayout->addWidget(titleLabel);
+    mainLayout->addWidget(volumeSlider);
+    mainLayout->addLayout(buttonLayout);
 
     setStyleSheet(
         "SettingsDialog {"
@@ -49,13 +73,19 @@ SettingsDialog::SettingsDialog(QAudioOutput* audioOutput, QWidget *parent)
         );
 }
 
-#include <QSettings>
-
 void SettingsDialog::updateVolume(int volume) {
-    float normalizedVolume = volume / 100.0f;
-    m_audioOutput->setVolume(normalizedVolume);
+    currentVolume = volume / 100.0f;
+    m_soundEffect->setVolume(currentVolume); // Временное изменение громкости
+}
 
-    // Сохраняем настройки
+void SettingsDialog::saveSettings() {
     QSettings settings;
-    settings.setValue("audio/volume", normalizedVolume);
+    settings.setValue("audio/volume", currentVolume);
+    this->accept();
+}
+
+void SettingsDialog::discardChanges() {
+    // Восстанавливаем исходную громкость
+    m_soundEffect->setVolume(initialVolume);
+    this->reject();
 }

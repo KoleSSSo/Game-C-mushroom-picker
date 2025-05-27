@@ -5,16 +5,14 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 #include <QDialog>
-#include <QMediaPlayer>
+#include <QSoundEffect>
 #include <QAudioOutput>
 #include "records.h"
 #include "styledialog.h"
 #include "settingsdialog.h"
 
 QT_BEGIN_NAMESPACE
-namespace Ui {
-class MainWindow;
-}
+namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow
@@ -25,6 +23,8 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+    QSoundEffect* getSoundEffect() const { return m_soundEffect; }  // Новый метод
+
 private slots:
     void onStartClicked();
     void onSettingsClicked();
@@ -33,8 +33,7 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    QMediaPlayer* m_musicPlayer;  // Добавляем как члены класса
-    QAudioOutput* m_audioOutput;
+    QSoundEffect* m_soundEffect;  // Заменяем QMediaPlayer/QAudioOutput на QSoundEffect
 };
 
 #endif // MAINWINDOW_H

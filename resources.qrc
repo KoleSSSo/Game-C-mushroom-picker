@@ -12,5 +12,7 @@
     </qresource>
     <qresource prefix="/sound">
         <file>sounds/sandbox-serenade-sky-toes-main-version-28029-02-39.mp3</file>
+        <file>sounds/IC3PEAK-Froinlove.mp3</file>
+        <file>sounds/3.wav</file>
     </qresource>
 </RCC>

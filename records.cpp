@@ -1,5 +1,6 @@
 #include "records.h"
 #include <QPushButton>
+#include "mainwindow.h"
 
 Records::Records(QWidget *parent) : QDialog(parent)
 {
