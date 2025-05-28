@@ -16,16 +16,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);                  //загружает интерфейс из .ui-файла и размещает его в окне.
 
 
-    // Принудительная установка фона
-    QPixmap bg("C:/programming/Mushroomer/textures/back-menu.jpg");
-    bg = bg.scaled(this->size(), Qt::IgnoreAspectRatio);
-    QPalette palette;
-    palette.setBrush(QPalette::Window, bg);
-    this->setPalette(palette);
-
-
     // Настройка музыки
-    QString audioPath = "C:/programming/Mushroomer/Game/sounds/sandbox-serenade-sky-toes-main-version-28029-02-39.wav";
+    QString audioPath = ":/sound/sounds/sandbox-serenade-sky-toes-main-version-28029-02-39.wav";
     m_soundEffect->setSource(QUrl::fromLocalFile(audioPath));
     m_soundEffect->setLoopCount(QSoundEffect::Infinite);
 
@@ -70,12 +62,13 @@ void MainWindow::onStartClicked()
     this->hide();
 
     GameScreen* gameScreen = new GameScreen(m_soundEffect);
-    gameScreen->setPlayerName(playerName); // Передаем имя игрока
+    gameScreen->setPlayerName(playerName);
     gameScreen->setWindowTitle("Грибник - " + playerName);
 
-    connect(gameScreen, &GameScreen::returnToMenuRequested, this, [this, gameScreen]() {
-        gameScreen->deleteLater();
+    // Используем прямое соединение
+    connect(gameScreen, &GameScreen::returnToMenuRequested, this, [this]() {
         this->show();
+        // Удаление gameScreen будет выполнено автоматически благодаря WA_DeleteOnClose
     });
 
     gameScreen->show();

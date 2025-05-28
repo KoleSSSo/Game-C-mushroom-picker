@@ -26,21 +26,16 @@ set(PROJECT_SOURCES
     records.h
     settingsdialog.cpp
     settingsdialog.h
-    gamescreen.cpp  # Убедитесь, что файл существует
+    gamescreen.cpp
     gamescreen.h
+    mushroom.cpp
+    mushroom.h
+    recordsmanager.cpp
+    recordsmanager.h
+    resources.qrc  # ← Добавлено сюда
 )
 
-add_executable(Game ${PROJECT_SOURCES}
-    mushroom.h mushroom.cpp)
-
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/resources.qrc)
-    set_source_files_properties(resources.qrc PROPERTIES QT_RESOURCE_ALIAS "/")
-    qt_add_resources(Game "app_resources"
-        PREFIX "/"
-        BASE ${CMAKE_CURRENT_SOURCE_DIR}
-        FILES resources.qrc
-    )
-endif()
+add_executable(Game ${PROJECT_SOURCES})
 
 target_link_libraries(Game PRIVATE
     Qt6::Core
@@ -50,7 +45,7 @@ target_link_libraries(Game PRIVATE
 )
 
 set_target_properties(Game PROPERTIES
-    AUTOMOC ON  # Важно для обработки Q_OBJECT
+    AUTOMOC ON
     AUTOUIC ON
     AUTORCC ON
 )

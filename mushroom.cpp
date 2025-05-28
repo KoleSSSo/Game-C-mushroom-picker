@@ -21,13 +21,13 @@ void Mushroom::loadTexture()
 {
     QString path;
     switch(m_type) {
-    case White: path = "C:/programming/Mushroomer/Game/images/mush1.png"; break;
-    case Boletus: path = "C:/programming/Mushroomer/Game/images/mush6.png"; break;
-    case Birch: path = "C:/programming/Mushroomer/Game/images/mush3.png"; break;
-    case Chanterelle: path = "C:/programming/Mushroomer/Game/images/mush2.png"; break;
-    case Russula: path = "C:/programming/Mushroomer/Game/images/mush7.png"; break;
-    case Toadstool: path = "C:/programming/Mushroomer/Game/images/mush5.png"; break;
-    case Amanita: path = "C:/programming/Mushroomer/Game/images/mush4.png"; break;
+    case White: path = ":/images/images/mush1.png"; break;
+    case Boletus: path = ":/images/images/mush6.png"; break;
+    case Birch: path = ":/images/images/mush3.png"; break;
+    case Chanterelle: path = ":/images/images/mush2.png"; break;
+    case Russula: path = ":/images/images/mush7.png"; break;
+    case Toadstool: path = ":/images/images/mush5.png"; break;
+    case Amanita: path = ":/images/images/mush4.png"; break;
     }
 
     m_texture = QPixmap(path);

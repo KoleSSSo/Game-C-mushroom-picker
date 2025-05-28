@@ -2,6 +2,7 @@
 #define GAMESCREEN_H
 #include "settingsdialog.h"
 #include "styledialog.h"
+#include "recordsmanager.h"
 #include "mushroom.h"
 #include <QWidget>
 #include <QKeyEvent>
@@ -19,10 +20,12 @@ public:
     void setPlayerName(const QString& name) { m_playerName = name; }
 
     ~GameScreen();
-
+public slots:
+    void showGameOverDialog(const QString& message);
 signals:
 
     void returnToMenuRequested();
+    //void gameOverSignal(const QString& message);
 
 protected:
            // Обработчики событий
@@ -53,6 +56,7 @@ private:
     QPixmap m_background;
     QPixmap m_playerTexture;
     bool m_texturesLoaded = false;
+    bool m_gameActive = true;
 
     // Аудио
     QSoundEffect* m_backgroundMusic;
@@ -69,13 +73,13 @@ private:
     int m_playerX = 400;        // Позиция игрока
     int m_playerY = 300;
     const int m_playerSpeed = 15; // Увеличили скорость
+    RecordsManager m_recordsManager;
 
     // Состояние управления
     bool m_moveUp = false;
     bool m_moveDown = false;
     bool m_moveLeft = false;
     bool m_moveRight = false;
-    bool m_gameActive = true;
 
     // Приватные методы
     void setupUI();
@@ -83,10 +87,9 @@ private:
     void movePlayer(int dx, int dy);
     void checkCollisions();
     void updateScoreDisplay();
-    void gameOver();
+    void gameOver(const QString& message);
     void clearMushrooms();
     void saveRecord(); // Новый метод для сохранения рекорда
-
 
 };
 

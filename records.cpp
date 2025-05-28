@@ -1,6 +1,7 @@
 #include "records.h"
 #include <QPushButton>
 #include <QFile>
+#include <QScrollArea>
 #include "mainwindow.h"
 
 Records::Records(QWidget *parent) : QDialog(parent)
@@ -13,24 +14,31 @@ void Records::setupUI()
     setWindowTitle("Таблица рекордов");
     setFixedSize(500, 400);
 
-    QVBoxLayout *layout = new QVBoxLayout(this);
+    QVBoxLayout *mainLayout = new QVBoxLayout(this); // Главный layout
 
     QLabel *title = new QLabel("Лучшие игроки", this);
     title->setStyleSheet("font-family: 'Saturn'; font-size: 24px; color: #2d5a3f;");
     title->setAlignment(Qt::AlignCenter);
+    mainLayout->addWidget(title);
 
     // Чтение рекордов из файла
-    QFile file("records.txt");
+    QString filePath = QCoreApplication::applicationDirPath() + "/records.txt";
+    qDebug() << "Looking for records at:" << filePath;
+
+    QFile file(filePath);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QTextStream in(&file);  // Объявляем QTextStream здесь
         QList<QPair<int, QString>> records;
+        QTextStream in(&file);
 
         while (!in.atEnd()) {
-            QString line = in.readLine();
+            QString line = in.readLine().trimmed();
             QStringList parts = line.split(":");
             if (parts.size() == 2) {
-                int score = parts[1].toInt();
-                records.append(qMakePair(score, parts[0]));
+                bool ok;
+                int score = parts[1].toInt(&ok);
+                if (ok) {
+                    records.append(qMakePair(score, parts[0]));
+                }
             }
         }
         file.close();
@@ -41,19 +49,30 @@ void Records::setupUI()
                       return a.first > b.first;
                   });
 
+        // Создаем Scroll Area для рекордов
+        QScrollArea *scrollArea = new QScrollArea(this);
+        QWidget *scrollContent = new QWidget();
+        QVBoxLayout *recordsLayout = new QVBoxLayout(scrollContent);
+
         // Отображение топ-10
-        QVBoxLayout* recordsLayout = new QVBoxLayout();
         for (int i = 0; i < qMin(10, records.size()); ++i) {
             QString recordText = QString("%1. %2 - %3 очков")
                                      .arg(i+1)
                                      .arg(records[i].second)
                                      .arg(records[i].first);
-            QLabel* recordLabel = new QLabel(recordText, this);
+            QLabel* recordLabel = new QLabel(recordText, scrollContent);
             recordLabel->setStyleSheet("font-family: 'Saturn'; font-size: 18px;");
             recordsLayout->addWidget(recordLabel);
         }
 
-        layout->addLayout(recordsLayout);
+        scrollArea->setWidget(scrollContent);
+        scrollArea->setWidgetResizable(true);
+        mainLayout->addWidget(scrollArea);
+    } else {
+        qDebug() << "Failed to open records file for reading:" << filePath;
+        QLabel* noRecords = new QLabel("Рекорды пока отсутствуют", this);
+        noRecords->setStyleSheet("font-family: 'Saturn'; font-size: 18px;");
+        mainLayout->addWidget(noRecords, 0, Qt::AlignCenter);
     }
 
     QPushButton *closeButton = new QPushButton("Закрыть", this);
@@ -67,12 +86,8 @@ void Records::setupUI()
         "   padding: 5px 20px;"
         "}"
         );
-
     connect(closeButton, &QPushButton::clicked, this, &QDialog::accept);
-
-    layout->addWidget(title);
-    layout->addStretch();
-    layout->addWidget(closeButton, 0, Qt::AlignCenter);
+    mainLayout->addWidget(closeButton, 0, Qt::AlignCenter);
 
     setStyleSheet(
         "Records {"

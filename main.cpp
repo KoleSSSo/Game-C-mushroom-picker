@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QLocale>
 #include <QTranslator>
+#include <QDir>
 
 int main(int argc, char *argv[])
 {
@@ -9,7 +10,7 @@ int main(int argc, char *argv[])
     //главный класс приложения
     QApplication a(argc, argv);
 
-
+    qDebug() << "Current path:" << QDir::currentPath();
     //Создание и отображение главного окна
     MainWindow w;
     w.show();

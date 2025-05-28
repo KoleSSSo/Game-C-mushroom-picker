@@ -6,15 +6,16 @@
 #include <QFile>
 #include <QDebug>
 #include <QSettings>
-#include<QRandomGenerator>
-
+#include <QRandomGenerator>
+#include <QDir>
 
 GameScreen::GameScreen(QSoundEffect* backgroundMusic, QWidget *parent)
     : QWidget(parent), m_backgroundMusic(backgroundMusic)
 {
+    setAttribute(Qt::WA_DeleteOnClose);
     setFixedSize(1080, 720); // Фиксируем размер окна
     setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-    setAttribute(Qt::WA_DeleteOnClose);
+
     setFocusPolicy(Qt::StrongFocus);
 
     loadTextures();
@@ -37,11 +38,19 @@ GameScreen::GameScreen(QSoundEffect* backgroundMusic, QWidget *parent)
 
     // Таймер общего времени игры
     m_gameTimer = new QTimer(this);
-    m_gameTimer->setSingleShot(true);
     connect(m_gameTimer, &QTimer::timeout, this, [this]() {
-        m_gameActive = false;
+        if(m_gameActive) {
+            m_gameActive = false;
+            m_clockTimer->stop();
+            m_spawnTimer->stop();
+            updateTimer();
+        }
     });
-    m_gameTimer->start(90000); // 90 секунд
+    m_gameTimer->start(90000);
+
+    setFocusPolicy(Qt::StrongFocus);
+    setFocus(); // Убедимся, что фокус установлен
+
 }
 
 
@@ -73,18 +82,68 @@ void GameScreen::updateGame()
     }
 }
 
+void GameScreen::showGameOverDialog(const QString& message)
+{
+    m_gameActive = false;
+    saveRecord();
+
+    // Создаем диалоговое окно
+    QDialog endDialog(this);
+    endDialog.setWindowTitle("Игра окончена");
+    endDialog.setFixedSize(400, 200);
+    endDialog.setStyleSheet(
+        "QDialog {"
+        "   background-color: rgba(255, 255, 255, 220);"
+        "   border: 3px solid #2d5a3f;"
+        "}");
+
+    QVBoxLayout *layout = new QVBoxLayout(&endDialog);
+
+    // Сообщение
+    QLabel *messageLabel = new QLabel(message, &endDialog);
+    messageLabel->setStyleSheet("font-family: 'Saturn'; font-size: 18px;");
+    messageLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(messageLabel);
+
+    // Кнопка
+    QPushButton *menuButton = new QPushButton("Выйти в главное меню", &endDialog);
+    menuButton->setStyleSheet(
+        "QPushButton {"
+        "   font-family: 'Saturn';"
+        "   font-size: 18px;"
+        "   color: black;"
+        "   background-color: rgba(187, 224, 190, 150);"
+        "   border: 2px solid #2d5a3f;"
+        "   padding: 5px 20px;"
+        "   min-width: 100px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(167, 204, 170, 200);"
+        "}");
+    layout->addWidget(menuButton, 0, Qt::AlignCenter);
+
+    // Обработка нажатия кнопки
+    connect(menuButton, &QPushButton::clicked, [&]() {
+        endDialog.accept();
+        this->close();
+        emit returnToMenuRequested();
+    });
+
+    endDialog.exec();
+}
+
 void GameScreen::resizeEvent(QResizeEvent *event)
 {
-    QWidget::resizeEvent(event);
-    // Обновляем позиции UI элементов при изменении размера окна
-    m_timeLabel->move(20, 20);
-    m_scoreLabel->move(width() - 220, 20);
-    m_badMushroomsLabel->move(width() / 2 - 100, 20);
+    // QWidget::resizeEvent(event);
+    // // Обновляем позиции UI элементов при изменении размера окна
+    // m_timeLabel->move(20, 20);
+    // m_scoreLabel->move(width() - 220, 20);
+    // m_badMushroomsLabel->move(width() / 2 - 100, 20);
 
-    // Масштабируем фон
-    if (!m_background.isNull()) {
-        m_background = m_background.scaled(size(), Qt::KeepAspectRatioByExpanding);
-    }
+    // // Масштабируем фон
+    // if (!m_background.isNull()) {
+    //     m_background = m_background.scaled(size(), Qt::KeepAspectRatioByExpanding);
+    // }
 }
 
 void GameScreen::clearMushrooms()
@@ -96,7 +155,7 @@ void GameScreen::clearMushrooms()
 void GameScreen::loadTextures()
 {
     // Фон
-    QPixmap bg("C:/programming/Mushroomer/Game/images/back.png");
+    QPixmap bg(":/images/images/back.png");
     if (!bg.isNull()) {
         m_background = bg.scaled(this->size(), Qt::IgnoreAspectRatio);
     } else {
@@ -105,7 +164,7 @@ void GameScreen::loadTextures()
     }
 
     // Игрок (оставляем размер 128x128)
-    QPixmap player("C:/programming/Mushroomer/Game/images/hat.png");
+    QPixmap player(":/images/images/hat.png");
     if (!player.isNull()) {
         m_playerTexture = player.scaled(128, 128, Qt::KeepAspectRatio);
     } else {
@@ -125,10 +184,11 @@ void GameScreen::setupUI()
     m_timeLabel->setGeometry(20, 20, 200, 40);
 
     m_scoreLabel = new QLabel(this);
-    m_scoreLabel->setGeometry(860, 20, 200, 40); // 1080 - 220 = 860
+    m_scoreLabel->setGeometry(920, height() - 60, 200, 40); // правый нижний угол
+
 
     m_badMushroomsLabel = new QLabel(this);
-    m_badMushroomsLabel->setGeometry(440, 20, 200, 40); // (1080/2) - 100 = 440
+    m_badMushroomsLabel->setGeometry(920, 20, 200, 40);
 
     // Обновляем стили
     QString labelStyle = "font-family: 'Saturn'; font-size: 24px; color: white;";
@@ -171,38 +231,16 @@ void GameScreen::updateTimer()
 {
     if (!m_gameActive) return;
 
-    m_timeLeft--;
-    m_timeLabel->setText(QString("Время: %1:%2")
-                             .arg(m_timeLeft / 60, 2, 10, QLatin1Char('0'))
-                             .arg(m_timeLeft % 60, 2, 10, QLatin1Char('0')));
+    if (m_timeLeft > 0) {
+        m_timeLeft--;
+        m_timeLabel->setText(QString("Время: %1:%2")
+                                 .arg(m_timeLeft / 60, 2, 10, QLatin1Char('0'))
+                                 .arg(m_timeLeft % 60, 2, 10, QLatin1Char('0')));
+    }
 
-    if (m_timeLeft <= 0) {
-        saveRecord(); // Сохраняем рекорд при окончании времени
-        m_timeLeft = 0;
+    if (m_timeLeft <= 0 && m_gameActive) {
         m_gameActive = false;
-        StyleDialog endDialog("Игра окончена", "Время закончилось!", this);
-
-        QPushButton* menuButton = new QPushButton("Выйти в главное меню", &endDialog);
-        menuButton->setStyleSheet(
-            "QPushButton {"
-            "   font-family: 'Saturn';"
-            "   font-size: 18px;"
-            "   color: black;"
-            "   background-color: rgba(187, 224, 190, 150);"
-            "   border: 2px solid #2d5a3f;"
-            "   padding: 5px 20px;"
-            "   min-width: 100px;"
-            "}"
-            "QPushButton:hover {"
-            "   background-color: rgba(167, 204, 170, 200);"
-            "}");
-
-        connect(menuButton, &QPushButton::clicked, [this]() {
-            this->close();
-        });
-
-        endDialog.exec();
-        emit returnToMenuRequested();
+        gameOver("Время закончилось!\nВаш результат: " + QString::number(m_score));
     }
 }
 
@@ -243,7 +281,7 @@ void GameScreen::checkCollisions()
             if (collected->value() < 0) {
                 m_badMushroomsCollected++;
                 if (m_badMushroomsCollected >= 3) {
-                    gameOver();
+                    gameOver("Время закончилось!\nВаш результат: " + QString::number(m_score));
                     return;
                 }
             }
@@ -255,33 +293,56 @@ void GameScreen::checkCollisions()
         }
     }
 }
-
 void GameScreen::keyPressEvent(QKeyEvent *event)
 {
+    if (!m_gameActive && event->key() != Qt::Key_Escape) return;
+
     switch (event->key()) {
     case Qt::Key_W:
-    case Qt::Key_Up:    m_moveUp = true; break;
+        m_moveUp = true;
+        break;
     case Qt::Key_S:
-    case Qt::Key_Down:  m_moveDown = true; break;
+        m_moveDown = true;
+        break;
     case Qt::Key_A:
-    case Qt::Key_Left:  m_moveLeft = true; break;
+        m_moveLeft = true;
+        break;
     case Qt::Key_D:
-    case Qt::Key_Right: m_moveRight = true; break;
-    case Qt::Key_Escape: showPauseMenu(); break;
-    default: QWidget::keyPressEvent(event);
+        m_moveRight = true;
+        break;
+    case Qt::Key_Up:
+        m_moveUp = true;
+        break;
+    case Qt::Key_Down:
+        m_moveDown = true;
+        break;
+    case Qt::Key_Left:
+        m_moveLeft = true;
+        break;
+    case Qt::Key_Right:
+        m_moveRight = true;
+        break;
+    case Qt::Key_Escape:
+        showPauseMenu();
+        break;
+    case Qt::Key_P: // Добавляем паузу по клавише P
+        showPauseMenu();
+        break;
+    default:
+        QWidget::keyPressEvent(event);
     }
 }
 
 void GameScreen::keyReleaseEvent(QKeyEvent *event)
 {
     switch (event->key()) {
-    case Qt::Key_W:
-    case Qt::Key_Up:    m_moveUp = false; break;
-    case Qt::Key_S:
-    case Qt::Key_Down:  m_moveDown = false; break;
-    case Qt::Key_A:
-    case Qt::Key_Left:  m_moveLeft = false; break;
-    case Qt::Key_D:
+    case Qt::Key_W: m_moveUp = false; break;
+    case Qt::Key_S: m_moveDown = false; break;
+    case Qt::Key_A: m_moveLeft = false; break;
+    case Qt::Key_D: m_moveRight = false; break;
+    case Qt::Key_Up: m_moveUp = false; break;
+    case Qt::Key_Down: m_moveDown = false; break;
+    case Qt::Key_Left: m_moveLeft = false; break;
     case Qt::Key_Right: m_moveRight = false; break;
     default: QWidget::keyReleaseEvent(event);
     }
@@ -289,10 +350,17 @@ void GameScreen::keyReleaseEvent(QKeyEvent *event)
 
 void GameScreen::movePlayer(int dx, int dy)
 {
-    m_playerX = qBound(0, m_playerX + dx, width() - m_playerTexture.width());
-    m_playerY = qBound(0, m_playerY + dy, height() - m_playerTexture.height());
-    checkCollisions();
-    update();
+    if (!m_gameActive) return; // Добавляем проверку
+
+    int newX = qBound(0, m_playerX + dx, width() - m_playerTexture.width());
+    int newY = qBound(0, m_playerY + dy, height() - m_playerTexture.height());
+
+    if (newX != m_playerX || newY != m_playerY) {
+        m_playerX = newX;
+        m_playerY = newY;
+        checkCollisions();
+        update();
+    }
 }
 
 void GameScreen::showEvent(QShowEvent *event)
@@ -303,22 +371,21 @@ void GameScreen::showEvent(QShowEvent *event)
 
 void GameScreen::saveRecord()
 {
-    if (m_playerName.isEmpty()) {
-        m_playerName = "Игрок";
-    }
-
-    QFile recordsFile("records.txt");
-    if (recordsFile.open(QIODevice::Append | QIODevice::Text)) {
-        QTextStream out(&recordsFile);
-        out << m_playerName << ":" << m_score << "\n";
-        recordsFile.close();
+    if (m_score > 0) {
+        m_recordsManager.saveRecord(m_playerName.isEmpty() ? "Игрок" : m_playerName, m_score);
     }
 }
 
 
 void GameScreen::showPauseMenu()
 {
+    bool wasActive = m_gameActive;
+    m_gameActive = false;
+
+    // Останавливаем все таймеры
     m_clockTimer->stop();
+    m_spawnTimer->stop();
+    m_gameLoopTimer->stop();
 
     QDialog pauseMenu(this);
     pauseMenu.setWindowTitle("Меню паузы");
@@ -359,9 +426,15 @@ void GameScreen::showPauseMenu()
     layout->addWidget(settingsButton);
     layout->addWidget(exitButton);
 
-    connect(resumeButton, &QPushButton::clicked, [&]() {
+    connect(resumeButton, &QPushButton::clicked, [&, wasActive]() {
         pauseMenu.close();
-        m_clockTimer->start();
+        m_gameActive = wasActive;
+        if(m_gameActive) {
+            m_clockTimer->start();
+            m_spawnTimer->start();
+            m_gameLoopTimer->start();
+        }
+        setFocus();
     });
 
     connect(settingsButton, &QPushButton::clicked, [&]() {
@@ -369,26 +442,50 @@ void GameScreen::showPauseMenu()
         settings.exec();
     });
 
-    connect(exitButton, &QPushButton::clicked, [this]() {
-        this->close();
+    connect(exitButton, &QPushButton::clicked, [this, &pauseMenu]() {
+        pauseMenu.accept(); // Сначала закрываем диалог
+        this->close(); // Затем закрываем игровой экран
+        // Не удаляем объекты вручную - WA_DeleteOnClose позаботится об этом
         emit returnToMenuRequested();
     });
 
-    pauseMenu.exec();
+    if (pauseMenu.exec() == QDialog::Rejected && wasActive) {
+        // Если просто закрыли диалог (не нажали кнопки)
+        m_gameActive = wasActive;
+        m_clockTimer->start();
+        m_spawnTimer->start();
+        m_gameLoopTimer->start();
+    }
 }
 
-void GameScreen::gameOver()
+void GameScreen::gameOver(const QString& message)
 {
     m_gameActive = false;
-    m_gameTimer->stop();
     m_clockTimer->stop();
     m_spawnTimer->stop();
-    saveRecord(); // Сохраняем рекорд
+    m_gameLoopTimer->stop();
 
-    StyleDialog endDialog("Игра окончена",
-                          QString("Вы потеряли все жизни!\nВаш счет: %1").arg(m_score), this);
+    saveRecord();
 
-    QPushButton* menuButton = new QPushButton("Выйти в главное меню", &endDialog);
+    QDialog endDialog(this);
+    endDialog.setWindowTitle("Игра окончена");
+    endDialog.setFixedSize(400, 200);
+    endDialog.setStyleSheet(
+        "QDialog {"
+        "   background-color: rgba(255, 255, 255, 220);"
+        "   border: 3px solid #2d5a3f;"
+        "}");
+
+    QVBoxLayout *layout = new QVBoxLayout(&endDialog);
+
+    // Сообщение
+    QLabel *messageLabel = new QLabel(message, &endDialog);
+    messageLabel->setStyleSheet("font-family: 'Saturn'; font-size: 18px;");
+    messageLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(messageLabel);
+
+    // Кнопка
+    QPushButton *menuButton = new QPushButton("Выйти в главное меню", &endDialog);
     menuButton->setStyleSheet(
         "QPushButton {"
         "   font-family: 'Saturn';"
@@ -402,11 +499,13 @@ void GameScreen::gameOver()
         "QPushButton:hover {"
         "   background-color: rgba(167, 204, 170, 200);"
         "}");
+    layout->addWidget(menuButton, 0, Qt::AlignCenter);
 
-    connect(menuButton, &QPushButton::clicked, [this]() {
+    connect(menuButton, &QPushButton::clicked, [&]() {
+        endDialog.accept();
         this->close();
+        emit returnToMenuRequested();
     });
 
     endDialog.exec();
-    emit returnToMenuRequested();
 }
